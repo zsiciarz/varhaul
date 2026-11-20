@@ -14,7 +14,7 @@ Installation
 varhaul needs Python 3.14 and [uv](https://docs.astral.sh/uv/).
 
 ```sh
-git clone <this repository>
+git clone https://github.com/zsiciarz/varhaul.git
 cd varhaul
 uv sync
 ```
