@@ -5,7 +5,7 @@ Reads linear elements in the Krakow ephemeris format
 star's position, magnitude range and type from the GCVS catalogue
 (``gcvs5.txt``). Writes the minima falling in the night's dark window while
 the star is above the horizon to a static HTML page, as a table sorted by
-time; the page filters them by altitude and magnitude. Secondary minima come
+time; the page filters them by altitude, azimuth, magnitude and depth. Secondary minima come
 from a SEC line when the star has one, else from phase 0.5 of the primary
 elements.
 
@@ -247,7 +247,7 @@ def render(
         dip = depth(star, r["min"])
         if dip is not None:
             dip = round(dip, 2)
-        data = {"alt": round(r["alt"], 1), "bright": bright, "faint": faint, "depth": dip}
+        data = {"alt": round(r["alt"], 1), "az": round(r["az"], 1), "bright": bright, "faint": faint, "depth": dip}
         mags = "".join(f' data-{k}="{v:g}"' for k, v in data.items() if v is not None)
         e = html.escape
         cells.append(

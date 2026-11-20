@@ -7,7 +7,7 @@ Given a date and an observer location, varhaul finds every primary and
 secondary minimum of an eclipsing binary that falls in that night's dark
 window while the star is above the horizon. It writes them to a
 static, self-contained HTML page with a sortable table you can filter by
-name, type, altitude, magnitude range and eclipse depth.
+name, type, altitude, azimuth, magnitude range and eclipse depth.
 
 ![Example screenshot](varhaul.png)
 
