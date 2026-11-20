@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minima $date</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1d1d1f; --muted: #6b6b70; --line: #e3e3e0;
+    --head: #f1f1ee; --hover: #f4f2ea; --accent: #2f5aa8; --warn: #a2560f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --fg: #e8e8ea; --muted: #9a9aa2; --line: #2b2b30;
+      --head: #1d1d21; --hover: #222228; --accent: #8fb0ef; --warn: #e3a564;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  .meta { color: var(--muted); margin: 0 0 16px; }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  input[type=search] {
+    font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--fg); width: min(320px, 100%);
+  }
+  .count { color: var(--muted); }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 5px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
+  th {
+    position: sticky; top: 0; background: var(--head); font-weight: 600;
+    cursor: pointer; user-select: none;
+  }
+  th[aria-sort=ascending]::after { content: " ▲"; font-size: 10px; }
+  th[aria-sort=descending]::after { content: " ▼"; font-size: 10px; }
+  td.num, th.num { text-align: right; }
+  tbody tr:hover { background: var(--hover); }
+  tr.zenith td.alt { color: var(--warn); font-weight: 600; }
+  tr.zenith td.alt::after { content: " ⚠"; }
+  .star { color: var(--accent); font-weight: 500; }
+  footer { color: var(--muted); margin-top: 20px; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Eclipsing binary minima, night of $date</h1>
+<p class="meta">$location · dark window (Sun &lt; $sun_alt°) $window · altitude ≥ $min_alt°,
+  <span style="color: var(--warn)">⚠</span> above $max_alt°</p>
+<div class="controls">
+  <input type="search" id="filter" placeholder="Filter by star, type, constellation…" aria-label="Filter">
+  <span class="count" id="count">$count minima</span>
+</div>
+<div class="scroll">
+<table id="minima">
+<thead><tr>
+  <th>Time</th><th>Star</th><th>Min</th><th>Type</th><th>Magnitude</th>
+  <th class="num">Period (h)</th><th class="num">Alt</th><th class="num">Az</th><th class="num">σ (min)</th>
+</tr></thead>
+<tbody>
+$rows
+</tbody>
+</table>
+</div>
+<footer>
+  <p>Elements: Suhora (Kraków) eclipsing-binary ephemeris; positions and magnitudes: GCVS.
+    Secondary minima without their own elements are at phase 0.5. σ is the timing uncertainty
+    propagated from the elements; “?” where the ephemeris gives none.</p>
+  <p>Not in GCVS ($unmatched_count): $unmatched</p>
+  <p>Generated $generated.</p>
+</footer>
+</main>
+<script>
+(() => {
+  const table = document.getElementById("minima");
+  const body = table.tBodies[0];
+  const rows = Array.from(body.rows);
+  const count = document.getElementById("count");
+  const key = (row, i) => {
+    const cell = row.cells[i];
+    const v = cell.dataset.sort ?? cell.textContent;
+    const n = Number(v);
+    return v !== "" && !Number.isNaN(n) ? n : v.toLowerCase();
+  };
+  table.tHead.addEventListener("click", (e) => {
+    const th = e.target.closest("th");
+    if (!th) return;
+    const i = th.cellIndex;
+    const dir = th.getAttribute("aria-sort") === "ascending" ? -1 : 1;
+    for (const h of table.tHead.rows[0].cells) h.removeAttribute("aria-sort");
+    th.setAttribute("aria-sort", dir === 1 ? "ascending" : "descending");
+    rows.sort((a, b) => {
+      const x = key(a, i), y = key(b, i);
+      if (typeof x !== typeof y) return (typeof x === "number" ? -1 : 1) * dir;
+      return (x < y ? -1 : x > y ? 1 : 0) * dir;
+    });
+    body.append(...rows);
+  });
+  document.getElementById("filter").addEventListener("input", (e) => {
+    const terms = e.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+    let shown = 0;
+    for (const row of rows) {
+      const text = row.textContent.toLowerCase();
+      const ok = terms.every((t) => text.includes(t));
+      row.hidden = !ok;
+      shown += ok;
+    }
+    count.textContent = shown + " of " + rows.length + " minima";
+  });
+})();
+</script>
+</body>
+</html>

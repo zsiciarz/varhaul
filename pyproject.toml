@@ -1,0 +1,21 @@
+[project]
+name = "varhaul"
+version = "0.1.0"
+description = "Plan eclipsing binary minima observations from the Suhora ephemeris"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+    { name = "Zbigniew Siciarz", email = "zbigniew@siciarz.net" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "astropy>=8.0.3",
+]
+
+[project.scripts]
+varhaul = "varhaul:main"
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
