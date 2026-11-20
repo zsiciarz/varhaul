@@ -4,14 +4,14 @@ Reads linear elements in the Krakow ephemeris format
 (``CON VAR  ALL|PRI|SEC  M0 (err)  P (err) ...``, M0 in HJD) and takes each
 star's position, magnitude range and type from the GCVS catalogue
 (``gcvs5.txt``). Writes the minima falling in the night's dark window while
-the star is above ``--min-alt`` to a static HTML page, as a table sorted by
-time. Minima above ``--max-alt`` (too close to the zenith for an alt-az
-mount) are kept but flagged. Secondary minima come from a SEC line when the star has one, else
-from phase 0.5 of the primary elements.
+the star is above the horizon to a static HTML page, as a table sorted by
+time; the page filters them by altitude and magnitude. Secondary minima come
+from a SEC line when the star has one, else from phase 0.5 of the primary
+elements.
 
 Needs only astropy:
 
-    uv run varhaul [DATE] [--lat 52.23 --lon 21.01 --min-alt 20] [-o FILE]
+    uv run varhaul [DATE] [--lat 52.23 --lon 21.01] [-o FILE]
 """
 
 import argparse
@@ -64,18 +64,6 @@ def parse_args() -> argparse.Namespace:
         type=ZoneInfo,
         default=ZoneInfo("Europe/Warsaw"),
         help="timezone for times",
-    )
-    parser.add_argument(
-        "--min-alt",
-        type=float,
-        default=20.0,
-        help="horizon altitude, degrees (default: 20)",
-    )
-    parser.add_argument(
-        "--max-alt",
-        type=float,
-        default=64.0,
-        help="flag minima above this altitude, degrees (default: 64)",
     )
     parser.add_argument(
         "--sun-alt",
@@ -236,21 +224,21 @@ def render(
         sigma = "?" if r["sigma"] is None else f"{r['sigma']:.0f}"
         sigma_sort = "" if r["sigma"] is None else f"{r['sigma']:.1f}"
         compass = COMPASS[round(r["az"] / 22.5) % 16]
-        cls = ' class="zenith"' if r["alt"] > args.max_alt else ""
         bright, faint = mag_range(star)
         mags = "".join(
-            f' data-{k}="{v:g}"' for k, v in (("bright", bright), ("faint", faint))
+            f' data-{k}="{v:g}"'
+            for k, v in (("alt", round(r["alt"], 1)), ("bright", bright), ("faint", faint))
             if v is not None
         )
         e = html.escape
         cells.append(
-            f'<tr{cls}{mags}><td data-sort="{r["jd"]:.5f}">{r["time"]:%H:%M}</td>'
+            f'<tr{mags}><td data-sort="{r["jd"]:.5f}">{r["time"]:%H:%M}</td>'
             f'<td class="star">{e(star["name"])}</td>'
             f"<td>{r['min']}</td><td>{e(star['type'])}</td>"
             f'<td data-sort="{"" if bright is None else f"{bright:g}"}">'
             f"{e(star['max_mag'])}–{e(star['min_mag'])} {e(star['band'])}</td>"
             f'<td class="num">{period:.1f}</td>'
-            f'<td class="num alt">{r["alt"]:.0f}°</td>'
+            f'<td class="num" data-sort="{r["alt"]:.1f}">{r["alt"]:.0f}°</td>'
             f'<td class="num" data-sort="{r["az"]:.1f}">{r["az"]:.0f}° {compass}</td>'
             f'<td class="num" data-sort="{sigma_sort}">{sigma}</td></tr>'
         )
@@ -260,8 +248,6 @@ def render(
         location=f"{args.lat:.4f}°, {args.lon:.4f}° ({html.escape(str(args.tz))})",
         sun_alt=f"{args.sun_alt:g}",
         window=f"{local(start):%Y-%m-%d %H:%M} – {local(end):%H:%M}",
-        min_alt=f"{args.min_alt:g}",
-        max_alt=f"{args.max_alt:g}",
         count=len(rows),
         rows="\n".join(cells),
         unmatched_count=len(unmatched),
@@ -303,7 +289,7 @@ def main() -> None:
             AltAz(obstime=times, location=location)
         )
         for m, t, alt, az in zip(found, times, altaz.alt.deg, altaz.az.deg):
-            if alt >= args.min_alt:
+            if alt >= 0:  # the page filters by altitude
                 rows.append({**m, "time": local(t), "alt": alt, "az": az})
     rows.sort(key=lambda r: r["time"])
 

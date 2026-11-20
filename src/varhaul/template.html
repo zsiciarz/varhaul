@@ -30,9 +30,9 @@
   }
   input[type=search] { width: min(320px, 100%); }
   input[type=number] { width: 5.5em; }
-  fieldset.mag { display: flex; gap: 8px; align-items: center; border: 0; margin: 0; padding: 0; }
-  fieldset.mag legend { float: left; padding: 0; margin-right: 4px; color: var(--muted); }
-  fieldset.mag label { color: var(--muted); }
+  fieldset.range { display: flex; gap: 8px; align-items: center; border: 0; margin: 0; padding: 0; }
+  fieldset.range legend { float: left; padding: 0; margin-right: 4px; color: var(--muted); }
+  fieldset.range label { color: var(--muted); }
   .count { color: var(--muted); }
   .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
@@ -45,8 +45,6 @@
   th[aria-sort=descending]::after { content: " ▼"; font-size: 10px; }
   td.num, th.num { text-align: right; }
   tbody tr:hover { background: var(--hover); }
-  tr.zenith td.alt { color: var(--warn); font-weight: 600; }
-  tr.zenith td.alt::after { content: " ⚠"; }
   .star { color: var(--accent); font-weight: 500; }
   footer { color: var(--muted); margin-top: 20px; font-size: 13px; }
 </style>
@@ -54,11 +52,15 @@
 <body>
 <main>
 <h1>Eclipsing binary minima, night of $date</h1>
-<p class="meta">$location · dark window (Sun &lt; $sun_alt°) $window · altitude ≥ $min_alt°,
-  <span style="color: var(--warn)">⚠</span> above $max_alt°</p>
+<p class="meta">$location · dark window (Sun &lt; $sun_alt°) $window</p>
 <div class="controls">
   <input type="search" id="filter" placeholder="Filter by star, type, constellation…" aria-label="Filter">
-  <fieldset class="mag" title="Show stars whose whole magnitude range, maximum to minimum, fits these limits">
+  <fieldset class="range" title="Show minima with the star between these altitudes, e.g. to skip the zenith with an alt-az mount">
+    <legend>Altitude</legend>
+    <label>from <input type="number" id="alt-min" min="0" max="90" step="5" placeholder="0" aria-label="Lowest altitude, degrees">°</label>
+    <label>to <input type="number" id="alt-max" min="0" max="90" step="5" placeholder="90" aria-label="Highest altitude, degrees">°</label>
+  </fieldset>
+  <fieldset class="range" title="Show stars whose whole magnitude range, maximum to minimum, fits these limits">
     <legend>Magnitude</legend>
     <label>from <input type="number" id="mag-bright" step="0.5" placeholder="any" aria-label="Brightest magnitude"></label>
     <label>to <input type="number" id="mag-faint" step="0.5" placeholder="any" aria-label="Faintest magnitude"></label>
@@ -114,45 +116,54 @@ $rows
     body.append(...rows);
   });
   const filter = document.getElementById("filter");
-  const bright = document.getElementById("mag-bright");
-  const faint = document.getElementById("mag-faint");
-  const limit = (input) => (input.value === "" ? null : Number(input.value));
-  // A star passes if its whole range fits: not brighter than the bright limit
-  // at maximum, not fainter than the faint limit at minimum. Stars with an
-  // unknown magnitude are hidden once the corresponding limit is set.
+  const value = (input) => (input.value === "" ? null : Number(input.value));
+  // Range filters: a row passes if data-<loAttr> >= the "from" limit and
+  // data-<hiAttr> <= the "to" limit. For magnitudes that means the star's
+  // whole range fits (not brighter than "from" at maximum, not fainter than
+  // "to" at minimum). Rows without the value are hidden once a limit is set.
+  // Limits are remembered per browser: they describe the observer's site and
+  // equipment, not one night.
+  const ranges = [
+    { lo: "alt-min", hi: "alt-max", loAttr: "alt", hiAttr: "alt", store: "varhaul.alt", init: { lo: "20", hi: "" } },
+    { lo: "mag-bright", hi: "mag-faint", loAttr: "bright", hiAttr: "faint", store: "varhaul.mag", init: { lo: "", hi: "" } },
+  ].map((r) => ({ ...r, lo: document.getElementById(r.lo), hi: document.getElementById(r.hi) }));
   const apply = () => {
     const terms = filter.value.toLowerCase().split(/\s+/).filter(Boolean);
-    const lo = limit(bright), hi = limit(faint);
+    const limits = ranges.map((r) => [r, value(r.lo), value(r.hi)]);
     let shown = 0;
     for (const row of rows) {
       const text = row.textContent.toLowerCase();
-      const b = row.dataset.bright, f = row.dataset.faint;
       const ok =
         terms.every((t) => text.includes(t)) &&
-        (lo === null || (b !== undefined && Number(b) >= lo)) &&
-        (hi === null || (f !== undefined && Number(f) <= hi));
+        limits.every(([r, lo, hi]) => {
+          const a = row.dataset[r.loAttr], b = row.dataset[r.hiAttr];
+          return (lo === null || (a !== undefined && Number(a) >= lo)) &&
+            (hi === null || (b !== undefined && Number(b) <= hi));
+        });
       row.hidden = !ok;
       shown += ok;
     }
     count.textContent =
       shown === rows.length ? rows.length + " minima" : shown + " of " + rows.length + " minima";
   };
-  // Remember the magnitude limits (they describe the observer's equipment).
-  const STORE = "varhaul.mag";
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORE) || "{}");
-    bright.value = saved.bright ?? "";
-    faint.value = saved.faint ?? "";
-  } catch {}
-  const save = () => {
+  for (const r of ranges) {
+    let saved = null;
     try {
-      localStorage.setItem(STORE, JSON.stringify({ bright: bright.value, faint: faint.value }));
+      saved = JSON.parse(localStorage.getItem(r.store));
     } catch {}
-  };
-  filter.addEventListener("input", apply);
-  for (const input of [bright, faint]) {
-    input.addEventListener("input", () => { save(); apply(); });
+    const { lo, hi } = saved ?? r.init;
+    r.lo.value = lo ?? "";
+    r.hi.value = hi ?? "";
+    const save = () => {
+      try {
+        localStorage.setItem(r.store, JSON.stringify({ lo: r.lo.value, hi: r.hi.value }));
+      } catch {}
+    };
+    for (const input of [r.lo, r.hi]) {
+      input.addEventListener("input", () => { save(); apply(); });
+    }
   }
+  filter.addEventListener("input", apply);
   apply();
 })();
 </script>

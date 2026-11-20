@@ -5,9 +5,9 @@ Variable star observation planner, based on Suhora ephemeris.
 
 Given a date and an observer location, varhaul finds every primary and
 secondary minimum of an eclipsing binary that falls in that night's dark
-window while the star is above a minimum altitude. It writes them to a
+window while the star is above the horizon. It writes them to a
 static, self-contained HTML page with a sortable table you can filter by
-name, type and magnitude range.
+name, type, altitude and magnitude range.
 
 Installation
 ------------
@@ -36,8 +36,6 @@ uv run varhaul 2026-12-24 --lat 50.06 --lon 19.94 -o christmas.html
 | `DATE` | today | evening date of the night |
 | `--lat`, `--lon` | 52.2297, 21.0122 (Warsaw) | observer location, degrees N / E |
 | `--tz` | `Europe/Warsaw` | timezone for displayed times |
-| `--min-alt` | 20 | skip minima with the star below this altitude, degrees |
-| `--max-alt` | 64 | flag minima above this altitude (near-zenith for alt-az mounts) |
 | `--sun-alt` | −12 | Sun altitude that defines the dark window |
 | `--ephem` | `data/ephem.txt` | eclipsing-binary ephemeris |
 | `--gcvs` | `data/gcvs5.txt` | GCVS catalogue |
