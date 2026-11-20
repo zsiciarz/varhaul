@@ -9,6 +9,8 @@ window while the star is above the horizon. It writes them to a
 static, self-contained HTML page with a sortable table you can filter by
 name, type, altitude, magnitude range and eclipse depth.
 
+![Example screenshot](varhaul.png)
+
 Installation
 ------------
 
