@@ -24,10 +24,15 @@
   h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
   .meta { color: var(--muted); margin: 0 0 16px; }
   .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-  input[type=search] {
+  input[type=search], input[type=number] {
     font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--bg); color: var(--fg); width: min(320px, 100%);
+    background: var(--bg); color: var(--fg);
   }
+  input[type=search] { width: min(320px, 100%); }
+  input[type=number] { width: 5.5em; }
+  fieldset.mag { display: flex; gap: 8px; align-items: center; border: 0; margin: 0; padding: 0; }
+  fieldset.mag legend { float: left; padding: 0; margin-right: 4px; color: var(--muted); }
+  fieldset.mag label { color: var(--muted); }
   .count { color: var(--muted); }
   .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
@@ -53,6 +58,11 @@
   <span style="color: var(--warn)">⚠</span> above $max_alt°</p>
 <div class="controls">
   <input type="search" id="filter" placeholder="Filter by star, type, constellation…" aria-label="Filter">
+  <fieldset class="mag" title="Show stars whose whole magnitude range, maximum to minimum, fits these limits">
+    <legend>Magnitude</legend>
+    <label>from <input type="number" id="mag-bright" step="0.5" placeholder="any" aria-label="Brightest magnitude"></label>
+    <label>to <input type="number" id="mag-faint" step="0.5" placeholder="any" aria-label="Faintest magnitude"></label>
+  </fieldset>
   <span class="count" id="count">$count minima</span>
 </div>
 <div class="scroll">
@@ -70,6 +80,9 @@ $rows
   <p>Elements: Suhora (Kraków) eclipsing-binary ephemeris; positions and magnitudes: GCVS.
     Secondary minima without their own elements are at phase 0.5. σ is the timing uncertainty
     propagated from the elements; “?” where the ephemeris gives none.</p>
+  <p>Magnitudes are GCVS maximum–minimum in the listed band (V, p = photographic, …), so the
+    magnitude filter mixes bands. A minimum given as a limit (“&lt;16.”) is filtered as 16; one in
+    brackets is an amplitude. Stars with no magnitude are hidden while a limit is set.</p>
   <p>Not in GCVS ($unmatched_count): $unmatched</p>
   <p>Generated $generated.</p>
 </footer>
@@ -100,17 +113,47 @@ $rows
     });
     body.append(...rows);
   });
-  document.getElementById("filter").addEventListener("input", (e) => {
-    const terms = e.target.value.toLowerCase().split(/\s+/).filter(Boolean);
+  const filter = document.getElementById("filter");
+  const bright = document.getElementById("mag-bright");
+  const faint = document.getElementById("mag-faint");
+  const limit = (input) => (input.value === "" ? null : Number(input.value));
+  // A star passes if its whole range fits: not brighter than the bright limit
+  // at maximum, not fainter than the faint limit at minimum. Stars with an
+  // unknown magnitude are hidden once the corresponding limit is set.
+  const apply = () => {
+    const terms = filter.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const lo = limit(bright), hi = limit(faint);
     let shown = 0;
     for (const row of rows) {
       const text = row.textContent.toLowerCase();
-      const ok = terms.every((t) => text.includes(t));
+      const b = row.dataset.bright, f = row.dataset.faint;
+      const ok =
+        terms.every((t) => text.includes(t)) &&
+        (lo === null || (b !== undefined && Number(b) >= lo)) &&
+        (hi === null || (f !== undefined && Number(f) <= hi));
       row.hidden = !ok;
       shown += ok;
     }
-    count.textContent = shown + " of " + rows.length + " minima";
-  });
+    count.textContent =
+      shown === rows.length ? rows.length + " minima" : shown + " of " + rows.length + " minima";
+  };
+  // Remember the magnitude limits (they describe the observer's equipment).
+  const STORE = "varhaul.mag";
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || "{}");
+    bright.value = saved.bright ?? "";
+    faint.value = saved.faint ?? "";
+  } catch {}
+  const save = () => {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({ bright: bright.value, faint: faint.value }));
+    } catch {}
+  };
+  filter.addEventListener("input", apply);
+  for (const input of [bright, faint]) {
+    input.addEventListener("input", () => { save(); apply(); });
+  }
+  apply();
 })();
 </script>
 </body>

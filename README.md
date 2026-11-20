@@ -6,7 +6,8 @@ Variable star observation planner, based on Suhora ephemeris.
 Given a date and an observer location, varhaul finds every primary and
 secondary minimum of an eclipsing binary that falls in that night's dark
 window while the star is above a minimum altitude. It writes them to a
-static, self-contained HTML page with a sortable, filterable table.
+static, self-contained HTML page with a sortable table you can filter by
+name, type and magnitude range.
 
 Installation
 ------------

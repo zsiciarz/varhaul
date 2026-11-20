@@ -206,6 +206,18 @@ def minima(el: dict[str, dict], ltt: float, start: Time, end: Time) -> list[dict
 
 
 COMPASS = "N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW".split()
+MAG = re.compile(r"-?\d+(?:\.\d*)?")
+
+
+def mag_range(star: dict) -> tuple[float | None, float | None]:
+    """A star's (brightest, faintest) magnitude from its GCVS fields.
+    ``:`` (uncertain) and ``<``/``>`` (limits) are ignored, so ``<16.`` counts
+    as 16; a bracketed minimum like ``(0.29)`` is an amplitude."""
+    bright = float(m[0]) if (m := MAG.search(star["max_mag"])) else None
+    faint = float(m[0]) if (m := MAG.search(star["min_mag"])) else None
+    if star["min_mag"].startswith("("):
+        faint = None if bright is None or faint is None else bright + faint
+    return bright, faint
 
 
 def render(
@@ -225,12 +237,18 @@ def render(
         sigma_sort = "" if r["sigma"] is None else f"{r['sigma']:.1f}"
         compass = COMPASS[round(r["az"] / 22.5) % 16]
         cls = ' class="zenith"' if r["alt"] > args.max_alt else ""
+        bright, faint = mag_range(star)
+        mags = "".join(
+            f' data-{k}="{v:g}"' for k, v in (("bright", bright), ("faint", faint))
+            if v is not None
+        )
         e = html.escape
         cells.append(
-            f'<tr{cls}><td data-sort="{r["jd"]:.5f}">{r["time"]:%H:%M}</td>'
+            f'<tr{cls}{mags}><td data-sort="{r["jd"]:.5f}">{r["time"]:%H:%M}</td>'
             f'<td class="star">{e(star["name"])}</td>'
             f"<td>{r['min']}</td><td>{e(star['type'])}</td>"
-            f"<td>{e(star['max_mag'])}–{e(star['min_mag'])} {e(star['band'])}</td>"
+            f'<td data-sort="{"" if bright is None else f"{bright:g}"}">'
+            f"{e(star['max_mag'])}–{e(star['min_mag'])} {e(star['band'])}</td>"
             f'<td class="num">{period:.1f}</td>'
             f'<td class="num alt">{r["alt"]:.0f}°</td>'
             f'<td class="num" data-sort="{r["az"]:.1f}">{r["az"]:.0f}° {compass}</td>'
