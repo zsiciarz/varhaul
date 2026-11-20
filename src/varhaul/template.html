@@ -23,17 +23,26 @@
   main { max-width: 1100px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
   .meta { color: var(--muted); margin: 0 0 16px; }
-  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-  input[type=search], input[type=number] {
-    font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--bg); color: var(--fg);
+  .filters {
+    display: grid; grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(150px, 1fr));
+    gap: 12px 20px; padding: 12px 14px; margin-bottom: 8px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--head);
   }
-  input[type=search] { width: min(320px, 100%); }
-  input[type=number] { width: 5.5em; }
-  fieldset.range { display: flex; gap: 8px; align-items: center; border: 0; margin: 0; padding: 0; }
-  fieldset.range legend { float: left; padding: 0; margin-right: 4px; color: var(--muted); }
-  fieldset.range label { color: var(--muted); }
-  .count { color: var(--muted); }
+  @media (max-width: 760px) {
+    .filters { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .filters .search { grid-column: 1 / -1; }
+  }
+  .field { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .field > label, .field > legend {
+    display: block; padding: 0; margin-bottom: 4px; font-size: 12px; color: var(--muted);
+  }
+  .filters input {
+    font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--fg); width: 100%; min-width: 0;
+  }
+  .pair { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .pair input { flex: 1; padding-inline: 8px; }
+  .count { color: var(--muted); margin: 0 0 12px; }
   .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
   th, td { padding: 5px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
@@ -47,31 +56,49 @@
   tbody tr:hover { background: var(--hover); }
   .star { color: var(--accent); font-weight: 500; }
   footer { color: var(--muted); margin-top: 20px; font-size: 13px; }
+  footer a, header.site a { color: var(--accent); }
+  header.site {
+    max-width: 1100px; margin: 0 auto 20px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  header.site .brand { font-size: 18px; font-weight: 700; letter-spacing: 0.02em; }
 </style>
 </head>
 <body>
+<header class="site"><span class="brand">varhaul</span></header>
 <main>
 <h1>Eclipsing binary minima, night of $date</h1>
 <p class="meta">$location · dark window (Sun &lt; $sun_alt°) $window</p>
-<div class="controls">
-  <input type="search" id="filter" placeholder="Filter by star, type, constellation…" aria-label="Filter">
-  <fieldset class="range" title="Show minima with the star between these altitudes, e.g. to skip the zenith with an alt-az mount">
-    <legend>Altitude</legend>
-    <label>from <input type="number" id="alt-min" min="0" max="90" step="5" placeholder="0" aria-label="Lowest altitude, degrees">°</label>
-    <label>to <input type="number" id="alt-max" min="0" max="90" step="5" placeholder="90" aria-label="Highest altitude, degrees">°</label>
+<div class="filters">
+  <div class="field search">
+    <label for="filter">Search</label>
+    <input type="search" id="filter" placeholder="Star, type, constellation…">
+  </div>
+  <fieldset class="field range" title="Show minima with the star between these altitudes, e.g. to skip the zenith with an alt-az mount">
+    <legend>Altitude (°)</legend>
+    <div class="pair">
+      <input type="number" id="alt-min" min="0" max="90" step="5" placeholder="0" aria-label="Lowest altitude, degrees">
+      <span aria-hidden="true">–</span>
+      <input type="number" id="alt-max" min="0" max="90" step="5" placeholder="90" aria-label="Highest altitude, degrees">
+    </div>
   </fieldset>
-  <fieldset class="range" title="Show stars whose whole magnitude range, maximum to minimum, fits these limits">
+  <fieldset class="field range" title="Show stars whose whole magnitude range, maximum to minimum, fits these limits">
     <legend>Magnitude</legend>
-    <label>from <input type="number" id="mag-bright" step="0.5" placeholder="any" aria-label="Brightest magnitude"></label>
-    <label>to <input type="number" id="mag-faint" step="0.5" placeholder="any" aria-label="Faintest magnitude"></label>
+    <div class="pair">
+      <input type="number" id="mag-bright" step="0.5" placeholder="any" aria-label="Brightest magnitude">
+      <span aria-hidden="true">–</span>
+      <input type="number" id="mag-faint" step="0.5" placeholder="any" aria-label="Faintest magnitude">
+    </div>
   </fieldset>
-  <fieldset class="range" title="Show minima in which the star dims by this many magnitudes">
-    <legend>Depth</legend>
-    <label>from <input type="number" id="depth-min" min="0" step="0.1" placeholder="any" aria-label="Shallowest minimum, magnitudes"></label>
-    <label>to <input type="number" id="depth-max" min="0" step="0.1" placeholder="any" aria-label="Deepest minimum, magnitudes"></label>
+  <fieldset class="field range" title="Show minima in which the star dims by this many magnitudes">
+    <legend>Depth (mag)</legend>
+    <div class="pair">
+      <input type="number" id="depth-min" min="0" step="0.1" placeholder="any" aria-label="Shallowest minimum, magnitudes">
+      <span aria-hidden="true">–</span>
+      <input type="number" id="depth-max" min="0" step="0.1" placeholder="any" aria-label="Deepest minimum, magnitudes">
+    </div>
   </fieldset>
-  <span class="count" id="count">$count minima</span>
 </div>
+<p class="count" id="count">$count minima</p>
 <div class="scroll">
 <table id="minima">
 <thead><tr>
@@ -94,7 +121,7 @@ $rows
     (or the Min II amplitude) for secondaries. Where GCVS gives no Min II the depth is “?”, and
     such minima are hidden while a depth limit is set.</p>
   <p>Not in GCVS ($unmatched_count): $unmatched</p>
-  <p>Generated $generated.</p>
+  <p>Generated $generated by <a href="https://github.com/zsiciarz/varhaul">varhaul</a>.</p>
 </footer>
 </main>
 <script>
