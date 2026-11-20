@@ -65,12 +65,17 @@
     <label>from <input type="number" id="mag-bright" step="0.5" placeholder="any" aria-label="Brightest magnitude"></label>
     <label>to <input type="number" id="mag-faint" step="0.5" placeholder="any" aria-label="Faintest magnitude"></label>
   </fieldset>
+  <fieldset class="range" title="Show minima in which the star dims by this many magnitudes">
+    <legend>Depth</legend>
+    <label>from <input type="number" id="depth-min" min="0" step="0.1" placeholder="any" aria-label="Shallowest minimum, magnitudes"></label>
+    <label>to <input type="number" id="depth-max" min="0" step="0.1" placeholder="any" aria-label="Deepest minimum, magnitudes"></label>
+  </fieldset>
   <span class="count" id="count">$count minima</span>
 </div>
 <div class="scroll">
 <table id="minima">
 <thead><tr>
-  <th>Time</th><th>Star</th><th>Min</th><th>Type</th><th>Magnitude</th>
+  <th>Time</th><th>Star</th><th>Min</th><th>Type</th><th>Magnitude</th><th class="num">Depth</th>
   <th class="num">Period (h)</th><th class="num">Alt</th><th class="num">Az</th><th class="num">σ (min)</th>
 </tr></thead>
 <tbody>
@@ -85,6 +90,9 @@ $rows
   <p>Magnitudes are GCVS maximum–minimum in the listed band (V, p = photographic, …), so the
     magnitude filter mixes bands. A minimum given as a limit (“&lt;16.”) is filtered as 16; one in
     brackets is an amplitude. Stars with no magnitude are hidden while a limit is set.</p>
+  <p>Depth is how far the star dims at that minimum: GCVS Min I − Max for primaries, Min II − Max
+    (or the Min II amplitude) for secondaries. Where GCVS gives no Min II the depth is “?”, and
+    such minima are hidden while a depth limit is set.</p>
   <p>Not in GCVS ($unmatched_count): $unmatched</p>
   <p>Generated $generated.</p>
 </footer>
@@ -126,6 +134,7 @@ $rows
   const ranges = [
     { lo: "alt-min", hi: "alt-max", loAttr: "alt", hiAttr: "alt", store: "varhaul.alt", init: { lo: "20", hi: "" } },
     { lo: "mag-bright", hi: "mag-faint", loAttr: "bright", hiAttr: "faint", store: "varhaul.mag", init: { lo: "", hi: "" } },
+    { lo: "depth-min", hi: "depth-max", loAttr: "depth", hiAttr: "depth", store: "varhaul.depth", init: { lo: "", hi: "" } },
   ].map((r) => ({ ...r, lo: document.getElementById(r.lo), hi: document.getElementById(r.hi) }));
   const apply = () => {
     const terms = filter.value.toLowerCase().split(/\s+/).filter(Boolean);

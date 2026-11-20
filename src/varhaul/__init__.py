@@ -140,6 +140,7 @@ def read_gcvs(path: Path) -> dict[str, dict]:
             "type": f[3].strip(),
             "max_mag": re.sub(r"\s", "", f[4]),
             "min_mag": re.sub(r"\s", "", f[5]),
+            "min2_mag": re.sub(r"\s", "", f[6]),
             "band": f[7].strip(),
         }
     return stars
@@ -208,6 +209,24 @@ def mag_range(star: dict) -> tuple[float | None, float | None]:
     return bright, faint
 
 
+def depth(star: dict, kind: str) -> float | None:
+    """How many magnitudes the star dims at a primary (``I``) or secondary
+    (``II``) minimum. Secondary depth comes from GCVS Min II (a magnitude, or
+    an amplitude in brackets); without it the depth is unknown. So is a depth
+    of zero or less, which comes from inconsistent GCVS data (e.g. V1139 Cas)."""
+    bright, faint = mag_range(star)
+    m = MAG.search(star["min2_mag"])
+    if kind == "I":
+        dip = None if bright is None or faint is None else faint - bright
+    elif m is None:
+        dip = None
+    elif star["min2_mag"].startswith("("):
+        dip = float(m[0])
+    else:
+        dip = None if bright is None else float(m[0]) - bright
+    return dip if dip is not None and dip > 0 else None
+
+
 def render(
     args: argparse.Namespace,
     start: Time,
@@ -225,11 +244,11 @@ def render(
         sigma_sort = "" if r["sigma"] is None else f"{r['sigma']:.1f}"
         compass = COMPASS[round(r["az"] / 22.5) % 16]
         bright, faint = mag_range(star)
-        mags = "".join(
-            f' data-{k}="{v:g}"'
-            for k, v in (("alt", round(r["alt"], 1)), ("bright", bright), ("faint", faint))
-            if v is not None
-        )
+        dip = depth(star, r["min"])
+        if dip is not None:
+            dip = round(dip, 2)
+        data = {"alt": round(r["alt"], 1), "bright": bright, "faint": faint, "depth": dip}
+        mags = "".join(f' data-{k}="{v:g}"' for k, v in data.items() if v is not None)
         e = html.escape
         cells.append(
             f'<tr{mags}><td data-sort="{r["jd"]:.5f}">{r["time"]:%H:%M}</td>'
@@ -237,6 +256,8 @@ def render(
             f"<td>{r['min']}</td><td>{e(star['type'])}</td>"
             f'<td data-sort="{"" if bright is None else f"{bright:g}"}">'
             f"{e(star['max_mag'])}–{e(star['min_mag'])} {e(star['band'])}</td>"
+            f'<td class="num" data-sort="{"" if dip is None else f"{dip:g}"}">'
+            f'{"?" if dip is None else f"{dip:.2f}"}</td>'
             f'<td class="num">{period:.1f}</td>'
             f'<td class="num" data-sort="{r["alt"]:.1f}">{r["alt"]:.0f}°</td>'
             f'<td class="num" data-sort="{r["az"]:.1f}">{r["az"]:.0f}° {compass}</td>'
